@@ -1,0 +1,64 @@
+/boats_dataset/
+    /gondola/
+    /motorboat/
+    /ferry/
+
+import tensorflow as tf
+
+# Parameters
+img_height, img_width = 224, 224
+batch_size = 32
+
+# Load dataset
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    "boats_dataset",
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
+
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    "boats_dataset",
+    validation_split=0.2,
+    subset="validation",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
+
+# Normalize pixel values
+normalization_layer = tf.keras.layers.Rescaling(1./255)
+train_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+val_ds = val_ds.map(lambda x, y: (normalization_layer(x), y))
+from tensorflow.keras import layers, models
+
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(train_ds.cardinality().numpy(), activation='softmax')  # Adjust based on number of classes
+])
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+model.summary()
+
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=10
+)
+
